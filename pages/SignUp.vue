@@ -3,41 +3,61 @@
     <div class="container container-small">
       <h2 class="headline">Create an account</h2>
 
-      <form @submit.prevent="handleSubmit">
-        <div class="field">
-          <label class="label" for="username">Username</label>
-          <input
-            class="textfield"
-            v-model="fields.username"
-            type="text"
-            name="username"
-            id="username"
-          />
-        </div>
-        <div class="field">
-          <label class="label" for="password">Password</label>
-          <input
-            class="textfield"
-            v-model="fields.password"
-            type="password"
-            name="password"
-            id="password"
-          />
-        </div>
-        <div class="field">
-          <label class="label" for="confirmPassword">Confirm Password</label>
-          <input
-            class="textfield"
-            v-model="fields.confirmPassword"
-            type="password"
-            name="confirmPassword"
-            id="confirmPassword"
-          />
-        </div>
-        <div class="btn-container">
-          <button class="btn btn-submit" type="submit">Submit</button>
-        </div>
-      </form>
+      <ValidationObserver v-slot="{ handleSubmit }">
+        <form @submit.prevent="handleSubmit(submitForm)">
+          <div class="field">
+            <ValidationProvider name="Username" rules="required" v-slot="{ errors }">
+              <label class="label" for="username">Username</label>
+              <input
+                class="textfield"
+                v-model="fields.username"
+                type="text"
+                name="username"
+                id="username"
+              />
+              <div class="error-message" v-if="errors[0]">{{errors[0]}}</div>
+            </ValidationProvider>
+          </div>
+          <div class="field">
+            <ValidationProvider
+              name="password"
+              rules="required|min:8"
+              v-slot="{ errors }"
+              vid="password"
+            >
+              <label class="label" for="password">Password</label>
+              <input
+                class="textfield"
+                v-model="fields.password"
+                type="password"
+                name="password"
+                id="password"
+              />
+              <div class="error-message" v-if="errors[0]">{{errors[0]}}</div>
+            </ValidationProvider>
+          </div>
+          <div class="field">
+            <ValidationProvider
+              name="Confirm Password"
+              rules="required|confirmed:password"
+              v-slot="{ errors }"
+            >
+              <label class="label" for="confirmPassword">Confirm Password</label>
+              <input
+                class="textfield"
+                v-model="fields.confirmPassword"
+                type="password"
+                name="confirmPassword"
+                id="confirmPassword"
+              />
+              <div class="error-message" v-if="errors[0]">{{errors[0]}}</div>
+            </ValidationProvider>
+          </div>
+          <div class="btn-container">
+            <button class="btn btn-submit" type="submit" :disabled="isLoading">Submit</button>
+          </div>
+        </form>
+      </ValidationObserver>
     </div>
   </div>
 </template>
@@ -45,71 +65,36 @@
 <script lang="ts">
 import Vue from 'vue'
 import { defineComponent, ref, reactive } from '@vue/composition-api'
+import { ValidationObserver, ValidationProvider } from 'vee-validate'
 import * as yup from 'yup'
 
-async function runValidation<T>(
-  schema: yup.ObjectSchema,
-  fields: T
-): Promise<{
-  valid: boolean
-  errors: ReturnType<typeof processErrors> | null
-}> {
-  const { valid, errors } = await schema
-    .validate(fields, { abortEarly: false })
-    .then(() => ({ valid: true, errors: null }))
-    .catch((errors) => ({ valid: false, errors: processErrors(errors) }))
-
-  return { valid, errors }
+type User = {
+  username: string
+  password: string
+  confirmPassword: string
 }
-
-function processErrors<T>(errors: yup.ValidationError) {
-  return errors.inner.reduce((prev, next) => {
-    if (!prev[next.path]) {
-      prev[next.path] = []
-    }
-
-    prev[next.path].push(next.message)
-
-    return prev
-  }, {} as { [key: string]: string[] })
-}
-
-const userSchema = yup
-  .object({
-    username: yup.string().required('Username is required'),
-    password: yup.string().min(8).max(20).required('Password is required'),
-    confirmPassword: yup
-      .string()
-      .test('match-passwords', 'Passwords must match', function (value) {
-        return this.parent.password === value
-      }),
-  })
-  .defined()
-
-type User = yup.InferType<typeof userSchema>
 
 export default defineComponent({
+  components: {
+    ValidationObserver,
+    ValidationProvider,
+  },
   setup() {
+    const isLoading = ref<boolean>(false)
     const fields = reactive<User>({
       username: '',
       password: '',
       confirmPassword: '',
     })
 
-    const handleSubmit = async () => {
-      const { valid, errors } = await runValidation(userSchema, fields)
-
-      if (valid) {
-        console.log('submitting')
-        return
-      }
-
-      console.log(errors)
+    const submitForm = async () => {
+      isLoading.value = true
     }
 
     return {
       fields,
-      handleSubmit,
+      isLoading,
+      submitForm,
     }
   },
 })
@@ -125,11 +110,11 @@ export default defineComponent({
 }
 
 .field {
-  @apply mb-2;
+  @apply mb-6;
 }
 
 .label {
-  @apply block text-sm mb-2;
+  @apply block text-sm mb-2 font-bold;
 }
 
 .textfield {
@@ -142,5 +127,9 @@ export default defineComponent({
 
 .btn-submit {
   @apply px-8;
+}
+
+.error-message {
+  @apply text-sm mt-2;
 }
 </style>
