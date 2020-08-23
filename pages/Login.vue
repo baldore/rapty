@@ -1,6 +1,6 @@
 <template>
   <div class="main-content">
-    <div class="container">Home</div>
+    <div class="container">Login</div>
   </div>
 </template>
 
@@ -8,12 +8,8 @@
 import Vue from 'vue'
 import { defineComponent, ref } from '@vue/composition-api'
 
-export default defineComponent({
-  setup() {
-    const input = ref('hola mundo')
-
-    return { input }
-  },
-})
+export default defineComponent({})
 </script>
 
+<style scoped>
+</style>
